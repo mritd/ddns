@@ -37,7 +37,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&recordType, "record", "r", "A", "domain record type")
 	rootCmd.PersistentFlags().StringVar(&apiKey, "key", "", "dns service provider api key")
 	rootCmd.PersistentFlags().StringVar(&apiSecret, "secret", "", "dns service provider api secret")
-	rootCmd.PersistentFlags().StringSliceVar(&domain, "domain", nil, "domain A record")
+	rootCmd.PersistentFlags().StringSliceVar(&domain, "domain", nil, "domain records")
 	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 3*time.Second, "http request timeout")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug mode")
 }
