@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var debug bool
 var timeout time.Duration
 var provider string
 var recordType string
@@ -30,10 +31,24 @@ func Execute() {
 }
 
 func init() {
+	cobra.OnInitialize(initLog)
 	rootCmd.PersistentFlags().StringVarP(&provider, "provider", "p", "namecom", "dns service provider")
 	rootCmd.PersistentFlags().StringVarP(&cron, "cron", "c", "@every 5m", "ddns check crontab")
 	rootCmd.PersistentFlags().StringVarP(&recordType, "record", "r", "A", "domain record type")
 	rootCmd.PersistentFlags().StringVar(&apiKey, "key", "", "dns service provider api key")
 	rootCmd.PersistentFlags().StringVar(&apiSecret, "secret", "", "dns service provider api secret")
 	rootCmd.PersistentFlags().StringSliceVar(&domain, "domain", nil, "domain A record")
+	rootCmd.PersistentFlags().DurationVar(&timeout, "timeout", 3*time.Second, "http request timeout")
+	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "debug mode")
+}
+
+func initLog() {
+	if debug {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
+	logrus.SetFormatter(&logrus.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: "2006-01-02 15:04:05",
+	})
 }
