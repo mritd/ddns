@@ -16,7 +16,6 @@ const NameComApi = "https://api.name.com"
 
 type NameCom struct {
 	client *http.Client
-	conf   Conf
 }
 
 type NameRecord struct {
@@ -30,12 +29,12 @@ type NameRecord struct {
 }
 
 func (name *NameCom) query() (NameRecord, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, name.conf.Domain), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, conf.Domain), nil)
 	if err != nil {
 		return NameRecord{}, err
 	}
 
-	req.SetBasicAuth(name.conf.ApiKey, name.conf.ApiSecret)
+	req.SetBasicAuth(conf.ApiKey, conf.ApiSecret)
 
 	resp, err := name.client.Do(req)
 	if err != nil {
@@ -60,11 +59,11 @@ func (name *NameCom) query() (NameRecord, error) {
 	}
 
 	for _, r := range records {
-		if r.Host == name.conf.Host && r.Type == name.conf.RecordType {
+		if r.Host == conf.Host && r.Type == conf.RecordType {
 			return r, nil
 		}
 	}
-	return NameRecord{}, errors.New(fmt.Sprintf("records [%s.%s] not found", conf.Host, conf.Domain))
+	return NameRecord{}, errors.New(fmt.Sprintf("records not found"))
 }
 
 func (name *NameCom) Query() (string, error) {
@@ -84,14 +83,14 @@ func (name *NameCom) Update(ip string) error {
 		return err
 	}
 
-	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, name.conf.Host, name.conf.RecordType, ip)
+	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, conf.Host, conf.RecordType, ip)
 
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v4/domains/%s/records/%d", NameComApi, name.conf.Domain, r.ID), bytes.NewBufferString(payload))
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v4/domains/%s/records/%d", NameComApi, conf.Domain, r.ID), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(name.conf.ApiKey, name.conf.ApiSecret)
+	req.SetBasicAuth(conf.ApiKey, conf.ApiSecret)
 
 	resp, err := name.client.Do(req)
 	if err != nil {
@@ -114,14 +113,14 @@ func (name *NameCom) Update(ip string) error {
 
 func (name *NameCom) Create(ip string) error {
 
-	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, name.conf.Host, name.conf.RecordType, ip)
+	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, conf.Host, conf.RecordType, ip)
 
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, name.conf.Domain), bytes.NewBufferString(payload))
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, conf.Domain), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(name.conf.ApiKey, name.conf.ApiSecret)
+	req.SetBasicAuth(conf.ApiKey, conf.ApiSecret)
 
 	resp, err := name.client.Do(req)
 	if err != nil {
@@ -142,11 +141,10 @@ func (name *NameCom) Create(ip string) error {
 	return nil
 }
 
-func NewNameCom(conf Conf) *NameCom {
+func NewNameCom() *NameCom {
 	return &NameCom{
 		client: &http.Client{
 			Timeout: conf.Timeout,
 		},
-		conf: conf,
 	}
 }

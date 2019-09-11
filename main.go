@@ -13,7 +13,9 @@ var rootCmd = &cobra.Command{
 	Short: "DDNS Tool",
 	Long: `
 DDNS Tool.`,
-	Run: func(cmd *cobra.Command, args []string) {},
+	Run: func(cmd *cobra.Command, args []string) {
+
+	},
 }
 
 func main() {
@@ -32,6 +34,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&conf.Domain, "domain", "", "domain name")
 	rootCmd.PersistentFlags().StringVar(&conf.Host, "host", "", "domain hosts")
 	rootCmd.PersistentFlags().DurationVar(&conf.Timeout, "timeout", 3*time.Second, "http request timeout")
+	rootCmd.PersistentFlags().DurationVarP(&conf.Interval, "interval", "i", 3*time.Minute, "ddns check interval")
 	rootCmd.PersistentFlags().BoolVar(&conf.Debug, "debug", false, "debug mode")
 }
 
