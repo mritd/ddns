@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Long: `
 DDNS Tool.`,
 	Run: func(cmd *cobra.Command, args []string) {
-
+		Run()
 	},
 }
 
@@ -26,16 +26,20 @@ func main() {
 
 func init() {
 	cobra.OnInitialize(initLog)
-	rootCmd.PersistentFlags().StringVarP(&conf.Provider, "provider", "p", "namecom", "dns service provider")
-	rootCmd.PersistentFlags().StringVarP(&conf.Cron, "cron", "c", "@every 5m", "ddns check crontab")
-	rootCmd.PersistentFlags().StringVarP(&conf.RecordType, "record", "r", "A", "domain record type")
-	rootCmd.PersistentFlags().StringVar(&conf.ApiKey, "key", "", "dns service provider api key")
-	rootCmd.PersistentFlags().StringVar(&conf.ApiSecret, "secret", "", "dns service provider api secret")
-	rootCmd.PersistentFlags().StringVar(&conf.Domain, "domain", "", "domain name")
-	rootCmd.PersistentFlags().StringVar(&conf.Host, "host", "", "domain hosts")
-	rootCmd.PersistentFlags().DurationVar(&conf.Timeout, "timeout", 3*time.Second, "http request timeout")
-	rootCmd.PersistentFlags().DurationVarP(&conf.Interval, "interval", "i", 3*time.Minute, "ddns check interval")
-	rootCmd.PersistentFlags().BoolVar(&conf.Debug, "debug", false, "debug mode")
+	rootCmd.Flags().StringVarP(&conf.Provider, "provider", "p", "namecom", "dns service provider")
+	rootCmd.Flags().StringVarP(&conf.Cron, "cron", "c", "@every 5m", "ddns check crontab")
+	rootCmd.Flags().StringVar(&conf.RecordType, "recordtype", "A", "domain record type")
+	rootCmd.Flags().StringVarP(&conf.ApiKey, "key", "k", "", "dns service provider api key")
+	rootCmd.Flags().StringVarP(&conf.ApiSecret, "secret", "s", "", "dns service provider api secret")
+	rootCmd.Flags().StringVar(&conf.Host, "host", "", "domain hosts")
+	rootCmd.Flags().StringVar(&conf.Domain, "domain", "", "domain name")
+	rootCmd.Flags().DurationVar(&conf.Timeout, "timeout", 10*time.Second, "http request timeout")
+	rootCmd.Flags().BoolVar(&conf.Debug, "debug", false, "debug mode")
+
+	_ = rootCmd.MarkFlagRequired("key")
+	_ = rootCmd.MarkFlagRequired("secret")
+	_ = rootCmd.MarkFlagRequired("host")
+	_ = rootCmd.MarkFlagRequired("domain")
 }
 
 func initLog() {

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"errors"
-	"fmt"
 	"strings"
 )
 
@@ -11,8 +9,6 @@ const (
 	ProviderGodaddy = "godaddy"
 	ProviderAliyun  = "aliyun"
 )
-
-var RecordNotFoundErr = errors.New(fmt.Sprintf("records not found"))
 
 type Provider interface {
 	Query() (string, error)

@@ -6,7 +6,6 @@ var conf Conf
 
 type Conf struct {
 	Debug      bool
-	Interval   time.Duration
 	Timeout    time.Duration
 	Provider   string
 	RecordType string

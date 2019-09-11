@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,7 +37,7 @@ func (name *NameCom) query() (NameRecord, error) {
 
 	resp, err := name.client.Do(req)
 	if err != nil {
-		return NameRecord{}, err
+		return NameRecord{}, NewHttpRequestErr(-1, err.Error())
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -49,7 +48,7 @@ func (name *NameCom) query() (NameRecord, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return NameRecord{}, errors.New(fmt.Sprintf("name.com api request failed, code: %d, message: %s", resp.StatusCode, buf.String()))
+		return NameRecord{}, NewHttpRequestErr(resp.StatusCode, buf.String())
 	}
 
 	var records []NameRecord
@@ -63,7 +62,7 @@ func (name *NameCom) query() (NameRecord, error) {
 			return r, nil
 		}
 	}
-	return NameRecord{}, errors.New(fmt.Sprintf("records not found"))
+	return NameRecord{}, NewRecordNotFoundErr(conf.Host, conf.Domain)
 }
 
 func (name *NameCom) Query() (string, error) {
@@ -94,7 +93,7 @@ func (name *NameCom) Update(ip string) error {
 
 	resp, err := name.client.Do(req)
 	if err != nil {
-		return err
+		return NewHttpRequestErr(-1, err.Error())
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -105,7 +104,7 @@ func (name *NameCom) Update(ip string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("name.com api request failed, code: %d, message: %s", resp.StatusCode, buf.String()))
+		return NewRecordNotFoundErr(conf.Host, conf.Domain)
 	}
 
 	return nil
@@ -124,7 +123,7 @@ func (name *NameCom) Create(ip string) error {
 
 	resp, err := name.client.Do(req)
 	if err != nil {
-		return err
+		return NewHttpRequestErr(-1, err.Error())
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -135,7 +134,7 @@ func (name *NameCom) Create(ip string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(fmt.Sprintf("name.com api request failed, code: %d, message: %s", resp.StatusCode, buf.String()))
+		return NewHttpRequestErr(resp.StatusCode, buf.String())
 	}
 
 	return nil
