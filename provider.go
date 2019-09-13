@@ -7,7 +7,6 @@ import (
 const (
 	ProviderNameCom = "namecom"
 	ProviderGodaddy = "godaddy"
-	ProviderAliyun  = "aliyun"
 )
 
 type Provider interface {
@@ -22,8 +21,6 @@ func GetProvider() Provider {
 		return NewNameCom()
 	case ProviderGodaddy:
 		return NewGodaddy()
-	case ProviderAliyun:
-		return NewNameCom()
 	default:
 		return nil
 	}
