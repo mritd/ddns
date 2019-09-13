@@ -55,7 +55,7 @@ func run() error {
 			if err != nil {
 				return err
 			}
-			logrus.Debugf("create dns record: %s.%s success", conf.Host, conf.Domain)
+			logrus.Infof("create dns record: %s.%s success", conf.Host, conf.Domain)
 			return nil
 		} else {
 			return err
