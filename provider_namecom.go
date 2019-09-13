@@ -104,7 +104,7 @@ func (name *NameCom) Update(ip string) error {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return NewRecordNotFoundErr(conf.Host, conf.Domain)
+		return NewHttpRequestErr(resp.StatusCode, buf.String())
 	}
 
 	return nil

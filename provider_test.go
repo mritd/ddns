@@ -29,3 +29,29 @@ func TestNameCom_Query(t *testing.T) {
 		t.Log(r)
 	}
 }
+
+func TestGodaddy_Create(t *testing.T) {
+	initConf()
+	err := NewGodaddy().Create("1.1.1.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGodaddy_Update(t *testing.T) {
+	initConf()
+	err := NewGodaddy().Update("2.2.2.2")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGodaddy_Query(t *testing.T) {
+	initConf()
+	r, err := NewGodaddy().Query()
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+}

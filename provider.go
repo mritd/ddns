@@ -21,7 +21,7 @@ func GetProvider() Provider {
 	case ProviderNameCom:
 		return NewNameCom()
 	case ProviderGodaddy:
-		return NewNameCom()
+		return NewGodaddy()
 	case ProviderAliyun:
 		return NewNameCom()
 	default:
