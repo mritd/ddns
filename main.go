@@ -11,11 +11,8 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "ddns",
 	Short: "DDNS Tool",
-	Long: `
-DDNS Tool.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		Run()
-	},
+	Long:  "DDNS Tool.",
+	Run:   func(cmd *cobra.Command, args []string) { Run() },
 }
 
 func main() {

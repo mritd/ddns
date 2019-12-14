@@ -62,7 +62,7 @@ func run() error {
 		}
 	}
 
-	logrus.Infof("record id: %s", addr)
+	logrus.Infof("record ip: %s", addr)
 
 	if addr != currentIP {
 		logrus.Infof("changing...")
