@@ -4,5 +4,8 @@ import "testing"
 
 func TestRun(t *testing.T) {
 	initConf()
-	run()
+	err := run()
+	if err != nil {
+		t.Fatal(err)
+	}
 }

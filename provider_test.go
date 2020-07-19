@@ -6,7 +6,11 @@ import (
 
 func TestNameCom_Create(t *testing.T) {
 	initConf()
-	err := NewNameCom().Create("1.1.1.1")
+	p, err := NewNameCom()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.Create("1.1.1.1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -14,7 +18,11 @@ func TestNameCom_Create(t *testing.T) {
 
 func TestNameCom_Update(t *testing.T) {
 	initConf()
-	err := NewNameCom().Update("2.2.2.2")
+	p, err := NewNameCom()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.Update("2.2.2.2")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -22,7 +30,11 @@ func TestNameCom_Update(t *testing.T) {
 
 func TestNameCom_Query(t *testing.T) {
 	initConf()
-	r, err := NewNameCom().Query()
+	p, err := NewNameCom()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := p.Query()
 	if err != nil {
 		t.Fatal(err)
 	} else {
@@ -30,25 +42,75 @@ func TestNameCom_Query(t *testing.T) {
 	}
 }
 
-func TestGodaddy_Create(t *testing.T) {
+func TestGoDaddy_Create(t *testing.T) {
 	initConf()
-	err := NewGodaddy().Create("1.1.1.1")
+	p, err := NewGoDaddy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.Create("1.1.1.1")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestGodaddy_Update(t *testing.T) {
+func TestGoDaddy_Update(t *testing.T) {
 	initConf()
-	err := NewGodaddy().Update("2.2.2.2")
+	p, err := NewGoDaddy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.Update("2.2.2.2")
 	if err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestGodaddy_Query(t *testing.T) {
+func TestGoDaddy_Query(t *testing.T) {
 	initConf()
-	r, err := NewGodaddy().Query()
+	p, err := NewGoDaddy()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := p.Query()
+	if err != nil {
+		t.Fatal(err)
+	} else {
+		t.Log(r)
+	}
+}
+
+func TestGandi_Create(t *testing.T) {
+	initConf()
+	p, err := NewGandi()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.Create("1.1.1.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGandi_Update(t *testing.T) {
+	initConf()
+	p, err := NewGandi()
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = p.Update("2.2.2.2")
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestGandi_Query(t *testing.T) {
+	initConf()
+	p, err := NewGandi()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r, err := p.Query()
 	if err != nil {
 		t.Fatal(err)
 	} else {

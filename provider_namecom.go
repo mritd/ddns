@@ -2,11 +2,10 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
-
-	"github.com/sirupsen/logrus"
 
 	jsoniter "github.com/json-iterator/go"
 )
@@ -27,32 +26,30 @@ type NameRecord struct {
 	TTL        int    `json:"ttl"`
 }
 
-func (name *NameCom) query() (NameRecord, error) {
+func (p *NameCom) query() (NameRecord, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, conf.Domain), nil)
 	if err != nil {
 		return NameRecord{}, err
 	}
 
-	req.SetBasicAuth(conf.ApiKey, conf.ApiSecret)
+	req.SetBasicAuth(conf.NameComUser, conf.NameComToken)
 
-	resp, err := name.client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
-		return NameRecord{}, NewHttpRequestErr(-1, err.Error())
+		return NameRecord{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, resp.Body)
+	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logrus.Error(err)
+		return NameRecord{}, err
 	}
-
 	if resp.StatusCode != http.StatusOK {
-		return NameRecord{}, NewHttpRequestErr(resp.StatusCode, buf.String())
+		return NameRecord{}, fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
 	}
 
 	var records []NameRecord
-	err = jsoniter.UnmarshalFromString(jsoniter.Get(buf.Bytes(), "records").ToString(), &records)
+	err = jsoniter.UnmarshalFromString(jsoniter.Get(bs, "records").ToString(), &records)
 	if err != nil {
 		return NameRecord{}, err
 	}
@@ -65,8 +62,8 @@ func (name *NameCom) query() (NameRecord, error) {
 	return NameRecord{}, NewRecordNotFoundErr(conf.Host, conf.Domain)
 }
 
-func (name *NameCom) Query() (string, error) {
-	r, err := name.query()
+func (p *NameCom) Query() (string, error) {
+	r, err := p.query()
 	if err != nil {
 		return "", err
 	} else {
@@ -75,75 +72,64 @@ func (name *NameCom) Query() (string, error) {
 
 }
 
-func (name *NameCom) Update(ip string) error {
-
-	r, err := name.query()
+func (p *NameCom) Update(ip string) error {
+	r, err := p.query()
 	if err != nil {
 		return err
 	}
 
 	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, conf.Host, conf.RecordType, ip)
-
 	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v4/domains/%s/records/%d", NameComApi, conf.Domain, r.ID), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(conf.ApiKey, conf.ApiSecret)
+	req.SetBasicAuth(conf.NameComUser, conf.NameComToken)
 
-	resp, err := name.client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
-		return NewHttpRequestErr(-1, err.Error())
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, resp.Body)
-	if err != nil {
-		logrus.Error(err)
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		return NewHttpRequestErr(resp.StatusCode, buf.String())
+		bs, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
 	}
 
 	return nil
 }
 
-func (name *NameCom) Create(ip string) error {
-
+func (p *NameCom) Create(ip string) error {
 	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, conf.Host, conf.RecordType, ip)
-
 	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, conf.Domain), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(conf.ApiKey, conf.ApiSecret)
+	req.SetBasicAuth(conf.NameComUser, conf.NameComToken)
 
-	resp, err := name.client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
-		return NewHttpRequestErr(-1, err.Error())
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, resp.Body)
-	if err != nil {
-		logrus.Error(err)
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		return NewHttpRequestErr(resp.StatusCode, buf.String())
+		bs, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
 	}
 
 	return nil
 }
 
-func NewNameCom() *NameCom {
+func NewNameCom() (*NameCom, error) {
+	if conf.NameComUser == "" || conf.NameComToken == "" {
+		return nil, errors.New("namecom api user or token is empty")
+	}
 	return &NameCom{
 		client: &http.Client{
 			Timeout: conf.Timeout,
 		},
-	}
+	}, nil
 }

@@ -1,10 +1,7 @@
 package main
 
 import (
-	"bytes"
-	"errors"
-	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,13 +17,12 @@ import (
 const IPSBAPI = "https://api.ip.sb/ip"
 
 func run() error {
-
 	logrus.Info("ddns running...")
 	logrus.Debugf("dns provider: %s", conf.Provider)
 
-	provider := GetProvider()
-	if provider == nil {
-		return errors.New(fmt.Sprintf("failed to get provider: %s", conf.Provider))
+	provider, err := GetProvider()
+	if err != nil {
+		return err
 	}
 
 	logrus.Debugf("request current ip api: %s", IPSBAPI)
@@ -34,25 +30,23 @@ func run() error {
 	client := http.Client{Timeout: conf.Timeout}
 	resp, err := client.Do(req)
 	if err != nil {
-		return NewHttpRequestErr(-1, err.Error())
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, resp.Body)
+	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 
-	currentIP := strings.TrimSpace(buf.String())
+	currentIP := strings.TrimSpace(string(bs))
 	logrus.Infof("current ip: %s", currentIP)
 
 	addr, err := provider.Query()
 	if err != nil {
 		if _, ok := err.(RecordNotFoundErr); ok {
 			logrus.Warnf("not found dns record: %s.%s, creating...", conf.Host, conf.Domain)
-			err = provider.Create(currentIP)
-			if err != nil {
+			if err := provider.Create(currentIP); err != nil {
 				return err
 			}
 			logrus.Infof("create dns record: %s.%s success", conf.Host, conf.Domain)
@@ -63,11 +57,9 @@ func run() error {
 	}
 
 	logrus.Infof("record ip: %s", addr)
-
 	if addr != currentIP {
-		logrus.Infof("changing...")
-		err = provider.Update(currentIP)
-		if err != nil {
+		logrus.Infof("record changing...")
+		if err := provider.Update(currentIP); err != nil {
 			return err
 		}
 		logrus.Infof("dns record changed to %s", currentIP)
@@ -82,8 +74,7 @@ func Run() {
 
 	c := cron.New()
 	err := c.AddFunc(conf.Cron, func() {
-		err := run()
-		if err != nil {
+		if err := run(); err != nil {
 			logrus.Error(err)
 		}
 	})

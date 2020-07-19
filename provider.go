@@ -1,12 +1,14 @@
 package main
 
 import (
+	"errors"
 	"strings"
 )
 
 const (
 	ProviderNameCom = "namecom"
-	ProviderGodaddy = "godaddy"
+	ProviderGoDaddy = "godaddy"
+	ProviderGandi   = "gandi"
 )
 
 type Provider interface {
@@ -15,13 +17,15 @@ type Provider interface {
 	Create(ip string) error
 }
 
-func GetProvider() Provider {
+func GetProvider() (Provider, error) {
 	switch strings.ToLower(conf.Provider) {
 	case ProviderNameCom:
 		return NewNameCom()
-	case ProviderGodaddy:
-		return NewGodaddy()
+	case ProviderGoDaddy:
+		return NewGoDaddy()
+	case ProviderGandi:
+		return NewGandi()
 	default:
-		return nil
+		return nil, errors.New("unsupported provider: " + conf.Provider)
 	}
 }

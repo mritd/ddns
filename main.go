@@ -23,18 +23,19 @@ func main() {
 
 func init() {
 	cobra.OnInitialize(initLog)
-	rootCmd.Flags().StringVarP(&conf.Provider, "provider", "p", "namecom", "dns service provider")
+	rootCmd.Flags().StringVarP(&conf.Provider, "provider", "p", "gandi", "dns service provider")
 	rootCmd.Flags().StringVarP(&conf.Cron, "cron", "c", "@every 5m", "ddns check crontab")
 	rootCmd.Flags().StringVar(&conf.RecordType, "recordtype", "A", "domain record type")
-	rootCmd.Flags().StringVarP(&conf.ApiKey, "key", "k", "", "dns service provider api key")
-	rootCmd.Flags().StringVarP(&conf.ApiSecret, "secret", "s", "", "dns service provider api secret")
+	rootCmd.Flags().StringVar(&conf.GoDaddyKey, "godaddy-key", "", "godaddy api key")
+	rootCmd.Flags().StringVar(&conf.GoDaddySecret, "godaddy-secret", "", "godaddy api secret")
+	rootCmd.Flags().StringVar(&conf.NameComUser, "namecom-user", "", "namecom api user name")
+	rootCmd.Flags().StringVar(&conf.NameComToken, "namecom-token", "", "namecom api token")
+	rootCmd.Flags().StringVar(&conf.GandiApiKey, "gandi-key", "", "gandi api key")
 	rootCmd.Flags().StringVar(&conf.Host, "host", "", "domain hosts")
 	rootCmd.Flags().StringVar(&conf.Domain, "domain", "", "domain name")
 	rootCmd.Flags().DurationVar(&conf.Timeout, "timeout", 10*time.Second, "http request timeout")
 	rootCmd.Flags().BoolVar(&conf.Debug, "debug", false, "debug mode")
 
-	_ = rootCmd.MarkFlagRequired("key")
-	_ = rootCmd.MarkFlagRequired("secret")
 	_ = rootCmd.MarkFlagRequired("host")
 	_ = rootCmd.MarkFlagRequired("domain")
 }

@@ -2,21 +2,21 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 
 	jsoniter "github.com/json-iterator/go"
-	"github.com/sirupsen/logrus"
 )
 
-const GodaddyAPI = "https://api.godaddy.com"
+const GoDaddyAPI = "https://api.godaddy.com"
 
-type Godaddy struct {
+type GoDaddy struct {
 	client *http.Client
 }
 
-type GodaddyRecord struct {
+type GoDaddyRecord struct {
 	Data     string `json:"data"`
 	Name     string `json:"name"`
 	TTL      int    `json:"ttl"`
@@ -24,35 +24,33 @@ type GodaddyRecord struct {
 	Priority int    `json:"priority,omitempty"`
 }
 
-func (godaddy *Godaddy) query() (GodaddyRecord, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/domains/%s/records", GodaddyAPI, conf.Domain), nil)
+func (p *GoDaddy) query() (GoDaddyRecord, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/domains/%s/records", GoDaddyAPI, conf.Domain), nil)
 	if err != nil {
-		return GodaddyRecord{}, err
+		return GoDaddyRecord{}, err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.ApiKey, conf.ApiSecret))
+	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.GoDaddyKey, conf.GoDaddySecret))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
-	resp, err := godaddy.client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
-		return GodaddyRecord{}, NewHttpRequestErr(-1, err.Error())
+		return GoDaddyRecord{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, resp.Body)
+	bs, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		logrus.Error(err)
+		return GoDaddyRecord{}, err
 	}
-
 	if resp.StatusCode != http.StatusOK {
-		return GodaddyRecord{}, NewHttpRequestErr(resp.StatusCode, buf.String())
+		return GoDaddyRecord{}, fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
 	}
 
-	var records []GodaddyRecord
-	err = jsoniter.Unmarshal(buf.Bytes(), &records)
+	var records []GoDaddyRecord
+	err = jsoniter.Unmarshal(bs, &records)
 	if err != nil {
-		return GodaddyRecord{}, err
+		return GoDaddyRecord{}, err
 	}
 
 	for _, r := range records {
@@ -60,12 +58,12 @@ func (godaddy *Godaddy) query() (GodaddyRecord, error) {
 			return r, nil
 		}
 	}
-	return GodaddyRecord{}, NewRecordNotFoundErr(conf.Host, conf.Domain)
+	return GoDaddyRecord{}, NewRecordNotFoundErr(conf.Host, conf.Domain)
 
 }
 
-func (godaddy *Godaddy) Query() (string, error) {
-	r, err := godaddy.query()
+func (p *GoDaddy) Query() (string, error) {
+	r, err := p.query()
 	if err != nil {
 		return "", err
 	} else {
@@ -73,72 +71,61 @@ func (godaddy *Godaddy) Query() (string, error) {
 	}
 }
 
-func (godaddy *Godaddy) Update(ip string) error {
-
+func (p *GoDaddy) Update(ip string) error {
 	payload := fmt.Sprintf(`[{"data":"%s","ttl":600}]`, ip)
-
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/domains/%s/records/%s/%s", GodaddyAPI, conf.Domain, conf.RecordType, conf.Host), bytes.NewBufferString(payload))
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/domains/%s/records/%s/%s", GoDaddyAPI, conf.Domain, conf.RecordType, conf.Host), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.ApiKey, conf.ApiSecret))
+	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.GoDaddyKey, conf.GoDaddySecret))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
-	resp, err := godaddy.client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
-		return NewHttpRequestErr(-1, err.Error())
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, resp.Body)
-	if err != nil {
-		logrus.Error(err)
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		return NewHttpRequestErr(resp.StatusCode, buf.String())
+		bs, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
 	}
 
 	return nil
 }
 
-func (godaddy *Godaddy) Create(ip string) error {
-
+func (p *GoDaddy) Create(ip string) error {
 	payload := fmt.Sprintf(`[{"data":"%s","name":"%s","ttl":600,"type":"%s"}]`, ip, conf.Host, conf.RecordType)
-
-	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/v1/domains/%s/records", GodaddyAPI, conf.Domain), bytes.NewBufferString(payload))
+	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/v1/domains/%s/records", GoDaddyAPI, conf.Domain), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.ApiKey, conf.ApiSecret))
+	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.GoDaddyKey, conf.GoDaddySecret))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
-	resp, err := godaddy.client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
-		return NewHttpRequestErr(-1, err.Error())
+		return err
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var buf bytes.Buffer
-	_, err = io.Copy(&buf, resp.Body)
-	if err != nil {
-		logrus.Error(err)
-	}
-
 	if resp.StatusCode != http.StatusOK {
-		return NewHttpRequestErr(resp.StatusCode, buf.String())
+		bs, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
 	}
 
 	return nil
 }
 
-func NewGodaddy() *Godaddy {
-	return &Godaddy{
+func NewGoDaddy() (*GoDaddy, error) {
+	if conf.GoDaddyKey == "" || conf.GoDaddySecret == "" {
+		return nil, errors.New("godaddy api key or api secret is empty")
+	}
+	return &GoDaddy{
 		client: &http.Client{
 			Timeout: conf.Timeout,
 		},
-	}
+	}, nil
 }
