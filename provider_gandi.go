@@ -90,7 +90,7 @@ func (p *Gandi) Update(ip string) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		bs, _ := ioutil.ReadAll(resp.Body)
 		return fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
 	}
