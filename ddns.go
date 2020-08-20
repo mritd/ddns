@@ -11,22 +11,21 @@ import (
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/robfig/cron"
-	"github.com/sirupsen/logrus"
 )
 
-const IPSBAPI = "https://api.ip.sb/ip"
+const API_IPSB = "https://api.ip.sb/ip"
 
 func run() error {
-	logrus.Info("ddns running...")
-	logrus.Debugf("dns provider: %s", conf.Provider)
+	logger.Info("ddns running...")
+	logger.Debugf("dns provider: %s", conf.Provider)
 
 	provider, err := GetProvider()
 	if err != nil {
 		return err
 	}
 
-	logrus.Debugf("request current ip api: %s", IPSBAPI)
-	req, _ := http.NewRequest("GET", IPSBAPI, nil)
+	logger.Debugf("request current ip api: %s", API_IPSB)
+	req, _ := http.NewRequest("GET", API_IPSB, nil)
 	client := http.Client{Timeout: conf.Timeout}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -40,58 +39,57 @@ func run() error {
 	}
 
 	currentIP := strings.TrimSpace(string(bs))
-	logrus.Infof("current ip: %s", currentIP)
+	logger.Infof("current ip: %s", currentIP)
 
 	addr, err := provider.Query()
 	if err != nil {
 		if _, ok := err.(RecordNotFoundErr); ok {
-			logrus.Warnf("not found dns record: %s.%s, creating...", conf.Host, conf.Domain)
+			logger.Warnf("not found dns record: %s.%s, creating...", conf.Host, conf.Domain)
 			if err := provider.Create(currentIP); err != nil {
 				return err
 			}
-			logrus.Infof("create dns record: %s.%s success", conf.Host, conf.Domain)
+			logger.Infof("create dns record: %s.%s success", conf.Host, conf.Domain)
 			return nil
 		} else {
 			return err
 		}
 	}
 
-	logrus.Infof("record ip: %s", addr)
+	logger.Infof("record ip: %s", addr)
 	if addr != currentIP {
-		logrus.Infof("record changing...")
+		logger.Infof("record changing...")
 		if err := provider.Update(currentIP); err != nil {
 			return err
 		}
-		logrus.Infof("dns record changed to %s", currentIP)
+		logger.Infof("dns record changed to %s", currentIP)
 	} else {
-		logrus.Infof("skip...")
+		logger.Infof("skip...")
 	}
 
 	return nil
 }
 
 func Run() {
-
 	c := cron.New()
 	err := c.AddFunc(conf.Cron, func() {
 		if err := run(); err != nil {
-			logrus.Error(err)
+			logger.Error(err)
 		}
 	})
 	if err != nil {
-		logrus.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	c.Start()
-	logrus.Info("ddns started.")
+	logger.Info("ddns started.")
 	if conf.Debug {
 		confJson, _ := jsoniter.MarshalToString(conf)
-		logrus.Debug(confJson)
+		logger.Debug(confJson)
 	}
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
 	c.Stop()
-	logrus.Info("ddns exit.")
+	logger.Info("ddns exit.")
 }
