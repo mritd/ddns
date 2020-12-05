@@ -4,11 +4,7 @@ COMMIT_SHA1     	:= $(shell git rev-parse HEAD)
 DOCKER_IMAGE 	    := mritd/ddns
 
 all: clean
-	gox -osarch="darwin/amd64 linux/386 linux/amd64 linux/arm" \
-		-output="dist/{{.Dir}}_{{.OS}}_{{.Arch}}" \
-		-ldflags	"-X 'main.version=${BUILD_VERSION}' \
-					-X 'main.buildDate=${BUILD_DATE}' \
-					-X 'main.commitID=${COMMIT_SHA1}'"
+	bash .cross_compile.sh
 
 release: all
 	ghr -u mritd -t ${GITHUB_TOKEN} -replace -recreate -name "Bump ${BUILD_VERSION}" --debug ${BUILD_VERSION} dist

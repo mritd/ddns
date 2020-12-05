@@ -13,6 +13,7 @@ import (
 const GoDaddyAPI = "https://api.godaddy.com"
 
 type GoDaddy struct {
+	conf   *Conf
 	client *http.Client
 }
 
@@ -25,12 +26,12 @@ type GoDaddyRecord struct {
 }
 
 func (p *GoDaddy) query() (GoDaddyRecord, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/domains/%s/records", GoDaddyAPI, conf.Domain), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v1/domains/%s/records", GoDaddyAPI, p.conf.Domain), nil)
 	if err != nil {
 		return GoDaddyRecord{}, err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.GoDaddyKey, conf.GoDaddySecret))
+	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", p.conf.GoDaddyKey, p.conf.GoDaddySecret))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
 	resp, err := p.client.Do(req)
@@ -54,11 +55,11 @@ func (p *GoDaddy) query() (GoDaddyRecord, error) {
 	}
 
 	for _, r := range records {
-		if r.Name == conf.Host && r.Type == conf.RecordType {
+		if r.Name == p.conf.Host && r.Type == p.conf.RecordType {
 			return r, nil
 		}
 	}
-	return GoDaddyRecord{}, NewRecordNotFoundErr(conf.Host, conf.Domain)
+	return GoDaddyRecord{}, NewRecordNotFoundErr(p.conf.Host, p.conf.Domain)
 
 }
 
@@ -73,12 +74,12 @@ func (p *GoDaddy) Query() (string, error) {
 
 func (p *GoDaddy) Update(ip string) error {
 	payload := fmt.Sprintf(`[{"data":"%s","ttl":600}]`, ip)
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/domains/%s/records/%s/%s", GoDaddyAPI, conf.Domain, conf.RecordType, conf.Host), bytes.NewBufferString(payload))
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v1/domains/%s/records/%s/%s", GoDaddyAPI, p.conf.Domain, p.conf.RecordType, p.conf.Host), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.GoDaddyKey, conf.GoDaddySecret))
+	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", p.conf.GoDaddyKey, p.conf.GoDaddySecret))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
 	resp, err := p.client.Do(req)
@@ -96,13 +97,13 @@ func (p *GoDaddy) Update(ip string) error {
 }
 
 func (p *GoDaddy) Create(ip string) error {
-	payload := fmt.Sprintf(`[{"data":"%s","name":"%s","ttl":600,"type":"%s"}]`, ip, conf.Host, conf.RecordType)
-	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/v1/domains/%s/records", GoDaddyAPI, conf.Domain), bytes.NewBufferString(payload))
+	payload := fmt.Sprintf(`[{"data":"%s","name":"%s","ttl":600,"type":"%s"}]`, ip, p.conf.Host, p.conf.RecordType)
+	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/v1/domains/%s/records", GoDaddyAPI, p.conf.Domain), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", conf.GoDaddyKey, conf.GoDaddySecret))
+	req.Header.Add("Authorization", fmt.Sprintf("sso-key %s:%s", p.conf.GoDaddyKey, p.conf.GoDaddySecret))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
 	resp, err := p.client.Do(req)
@@ -119,11 +120,12 @@ func (p *GoDaddy) Create(ip string) error {
 	return nil
 }
 
-func NewGoDaddy() (*GoDaddy, error) {
+func NewGoDaddy(conf *Conf) (*GoDaddy, error) {
 	if conf.GoDaddyKey == "" || conf.GoDaddySecret == "" {
 		return nil, errors.New("godaddy api key or api secret is empty")
 	}
 	return &GoDaddy{
+		conf: conf,
 		client: &http.Client{
 			Timeout: conf.Timeout,
 		},

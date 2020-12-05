@@ -8,24 +8,26 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/mritd/logger"
+
 	jsoniter "github.com/json-iterator/go"
 
 	"github.com/robfig/cron"
 )
 
-const API_IPSB = "https://api.ip.sb/ip"
+const ApiIpsb = "https://api.ip.sb/ip"
 
-func run() error {
+func run(conf *Conf) error {
 	logger.Info("ddns running...")
 	logger.Debugf("dns provider: %s", conf.Provider)
 
-	provider, err := GetProvider()
+	provider, err := GetProvider(conf)
 	if err != nil {
 		return err
 	}
 
-	logger.Debugf("request current ip api: %s", API_IPSB)
-	req, _ := http.NewRequest("GET", API_IPSB, nil)
+	logger.Debugf("request current ip api: %s", ApiIpsb)
+	req, _ := http.NewRequest("GET", ApiIpsb, nil)
 	client := http.Client{Timeout: conf.Timeout}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -69,15 +71,15 @@ func run() error {
 	return nil
 }
 
-func Run() {
+func start(conf *Conf) error {
 	c := cron.New()
 	err := c.AddFunc(conf.Cron, func() {
-		if err := run(); err != nil {
+		if err := run(conf); err != nil {
 			logger.Error(err)
 		}
 	})
 	if err != nil {
-		logger.Fatal(err)
+		return err
 	}
 
 	c.Start()
@@ -92,4 +94,5 @@ func Run() {
 	<-sigs
 	c.Stop()
 	logger.Info("ddns exit.")
+	return nil
 }

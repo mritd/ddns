@@ -2,82 +2,122 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"runtime"
+	"os"
 	"time"
 
-	"github.com/mritd/zaplogger"
+	"github.com/mritd/logger"
 
-	"go.uber.org/zap"
-
-	"github.com/spf13/cobra"
+	"github.com/urfave/cli/v2"
 )
 
 var (
 	version   string
 	buildDate string
 	commitID  string
-
-	versionTpl = `
-Name: ddns
-Version: %s
-Arch: %s
-BuildDate: %s
-CommitID: %s
-`
 )
 
-var logger *zap.SugaredLogger
-
-var rootCmd = &cobra.Command{
-	Use:     "ddns",
-	Version: version,
-	Short:   "DDNS Tool",
-	Run:     func(cmd *cobra.Command, args []string) { Run() },
-}
-
 func main() {
-	// init zap logger
-	zc, err := zaplogger.NewConfig(zapConf)
-	if err != nil {
-		log.Fatalf("Failed to create zap logger config: %v", err)
+	app := &cli.App{
+		Name:    "ddns",
+		Usage:   "DDNS Tool",
+		Version: fmt.Sprintf("%s %s %s", version, buildDate, commitID),
+		Authors: []*cli.Author{
+			{
+				Name:  "mritd",
+				Email: "mritd@linux.com",
+			},
+		},
+		Copyright: "Copyright (c) 2020 mritd, All rights reserved.",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "provider",
+				Aliases: []string{"p"},
+				Value:   "gandi",
+				Usage:   "dns service provider",
+				EnvVars: []string{"DDNS_PROVIDER"},
+			},
+			&cli.StringFlag{
+				Name:    "cron",
+				Aliases: []string{"c"},
+				Value:   "@every 5m",
+				Usage:   "ddns check crontab",
+				EnvVars: []string{"DDNS_CRON"},
+			},
+			&cli.StringFlag{
+				Name:    "record-type",
+				Value:   "A",
+				Usage:   "domain record type",
+				EnvVars: []string{"DDNS_RECORD_TYPE"},
+			},
+			&cli.StringFlag{
+				Name:     "host",
+				Usage:    "domain host",
+				Required: true,
+				EnvVars:  []string{"DDNS_HOST"},
+			},
+			&cli.StringFlag{
+				Name:    "domain",
+				Usage:   "domain name",
+				EnvVars: []string{"DDNS_DOMAIN"},
+			},
+			&cli.DurationFlag{
+				Name:    "timeout",
+				Usage:   "http request timeout",
+				EnvVars: []string{"DDNS_TIMEOUT"},
+				Value:   10 * time.Second,
+			},
+			&cli.StringFlag{
+				Name:    "godaddy-key",
+				Usage:   "godaddy api key",
+				EnvVars: []string{"DDNS_GODADDY_KEY"},
+			},
+			&cli.StringFlag{
+				Name:    "godaddy-secret",
+				Usage:   "godaddy api secret",
+				EnvVars: []string{"DDNS_GODADDY_SECRET"},
+			},
+			&cli.StringFlag{
+				Name:    "namecom-user",
+				Usage:   "namecom api user name",
+				EnvVars: []string{"DDNS_NAMECOM_USER"},
+			},
+			&cli.StringFlag{
+				Name:    "namecom-token",
+				Usage:   "namecom api token",
+				EnvVars: []string{"DDNS_NAMECOM_TOKEN"},
+			},
+			&cli.StringFlag{
+				Name:    "gandi-key",
+				Usage:   "gandi api key",
+				EnvVars: []string{"DDNS_GANDI_KEY"},
+			},
+			&cli.BoolFlag{
+				Name:    "debug",
+				Usage:   "debug mode",
+				EnvVars: []string{"DDNS_DEBUG"},
+				Value:   false,
+			},
+		},
+		Action: func(c *cli.Context) error {
+			return start(&Conf{
+				Debug:         c.Bool("debug"),
+				Timeout:       c.Duration("timeout"),
+				Provider:      c.String("provider"),
+				RecordType:    c.String("record-type"),
+				Cron:          c.String("cron"),
+				Domain:        c.String("domain"),
+				Host:          c.String("host"),
+				GoDaddyKey:    c.String("godaddy-key"),
+				GoDaddySecret: c.String("godaddy-secret"),
+				NameComUser:   c.String("namecom-user"),
+				NameComToken:  c.String("namecom-token"),
+				GandiApiKey:   c.String("gandi-key"),
+			})
+		},
 	}
-	logger = zaplogger.NewLogger(zc).Sugar()
 
-	// run command
-	if err := rootCmd.Execute(); err != nil {
+	err := app.Run(os.Args)
+	if err != nil {
 		logger.Error(err)
 	}
-}
-
-func init() {
-	// zap logger
-	rootCmd.PersistentFlags().BoolVar(&zapConf.Development, "zap-devel", false, "Enable zap development mode (changes defaults to console encoder, debug log level, disables sampling and stacktrace from 'warning' level)")
-	rootCmd.PersistentFlags().StringVar(&zapConf.Encoder, "zap-encoder", "console", "Zap log encoding ('json' or 'console')")
-	rootCmd.PersistentFlags().StringVar(&zapConf.Level, "zap-level", "info", "Zap log level (one of 'debug', 'info', 'warn', 'error')")
-	rootCmd.PersistentFlags().BoolVar(&zapConf.Sample, "zap-sample", false, "Enable zap log sampling. Sampling will be disabled for log level is debug")
-	rootCmd.PersistentFlags().StringVar(&zapConf.TimeEncoding, "zap-time-encoding", "default", "Sets the zap time format ('default', 'epoch', 'millis', 'nano', or 'iso8601')")
-	rootCmd.PersistentFlags().StringVar(&zapConf.StackLevel, "zap-stacktrace-level", "error", "Set the minimum log level that triggers stacktrace generation")
-
-	// ddns provider config
-	rootCmd.Flags().StringVarP(&conf.Provider, "provider", "p", "gandi", "dns service provider")
-	rootCmd.Flags().StringVar(&conf.GoDaddyKey, "godaddy-key", "", "godaddy api key")
-	rootCmd.Flags().StringVar(&conf.GoDaddySecret, "godaddy-secret", "", "godaddy api secret")
-	rootCmd.Flags().StringVar(&conf.NameComUser, "namecom-user", "", "namecom api user name")
-	rootCmd.Flags().StringVar(&conf.NameComToken, "namecom-token", "", "namecom api token")
-	rootCmd.Flags().StringVar(&conf.GandiApiKey, "gandi-key", "", "gandi api key")
-
-	// ddns config
-	rootCmd.Flags().StringVarP(&conf.Cron, "cron", "c", "@every 5m", "ddns check crontab")
-	rootCmd.Flags().StringVar(&conf.RecordType, "recordtype", "A", "domain record type")
-	rootCmd.Flags().StringVar(&conf.Host, "host", "", "domain hosts")
-	rootCmd.Flags().StringVar(&conf.Domain, "domain", "", "domain name")
-	rootCmd.Flags().DurationVar(&conf.Timeout, "timeout", 10*time.Second, "http request timeout")
-	rootCmd.Flags().BoolVar(&conf.Debug, "debug", false, "debug mode")
-
-	// version template
-	rootCmd.SetVersionTemplate(fmt.Sprintf(versionTpl, version, runtime.GOOS+"/"+runtime.GOARCH, buildDate, commitID))
-
-	_ = rootCmd.MarkFlagRequired("host")
-	_ = rootCmd.MarkFlagRequired("domain")
 }

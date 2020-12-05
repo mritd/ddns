@@ -13,6 +13,7 @@ import (
 const GandiApi = "https://api.gandi.net"
 
 type Gandi struct {
+	conf   *Conf
 	client *http.Client
 }
 
@@ -25,12 +26,12 @@ type GandiRecord struct {
 }
 
 func (p *Gandi) query() (GandiRecord, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, conf.Domain, conf.Host), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, p.conf.Domain, p.conf.Host), nil)
 	if err != nil {
 		return GandiRecord{}, err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", conf.GandiApiKey))
+	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", p.conf.GandiApiKey))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
 	resp, err := p.client.Do(req)
@@ -54,15 +55,15 @@ func (p *Gandi) query() (GandiRecord, error) {
 	}
 
 	for _, r := range records {
-		if r.RRSetName == conf.Host {
+		if r.RRSetName == p.conf.Host {
 			if len(r.RRSetValues) == 0 {
-				return GandiRecord{}, NewRecordNotFoundErr(conf.Host, conf.Domain)
+				return GandiRecord{}, NewRecordNotFoundErr(p.conf.Host, p.conf.Domain)
 			}
 			return r, nil
 		}
 	}
 
-	return GandiRecord{}, NewRecordNotFoundErr(conf.Host, conf.Domain)
+	return GandiRecord{}, NewRecordNotFoundErr(p.conf.Host, p.conf.Domain)
 }
 
 func (p *Gandi) Query() (string, error) {
@@ -75,13 +76,13 @@ func (p *Gandi) Query() (string, error) {
 }
 
 func (p *Gandi) Update(ip string) error {
-	payload := fmt.Sprintf(`{"items":[{"rrset_type":"%s","rrset_values":["%s"],"rrset_ttl":300}]}`, conf.RecordType, ip)
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, conf.Domain, conf.Host), bytes.NewBufferString(payload))
+	payload := fmt.Sprintf(`{"items":[{"rrset_type":"%s","rrset_values":["%s"],"rrset_ttl":300}]}`, p.conf.RecordType, ip)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, p.conf.Domain, p.conf.Host), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", conf.GandiApiKey))
+	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", p.conf.GandiApiKey))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
 	resp, err := p.client.Do(req)
@@ -99,13 +100,13 @@ func (p *Gandi) Update(ip string) error {
 }
 
 func (p *Gandi) Create(ip string) error {
-	payload := fmt.Sprintf(`{"rrset_type":"%s","rrset_values":["%s"],"rrset_ttl":300}`, conf.RecordType, ip)
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, conf.Domain, conf.Host), bytes.NewBufferString(payload))
+	payload := fmt.Sprintf(`{"rrset_type":"%s","rrset_values":["%s"],"rrset_ttl":300}`, p.conf.RecordType, ip)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, p.conf.Domain, p.conf.Host), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", conf.GandiApiKey))
+	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", p.conf.GandiApiKey))
 	req.Header.Add("Content-Type", "application/json;charset=utf-8")
 
 	resp, err := p.client.Do(req)
@@ -122,11 +123,12 @@ func (p *Gandi) Create(ip string) error {
 	return nil
 }
 
-func NewGandi() (*Gandi, error) {
+func NewGandi(conf *Conf) (*Gandi, error) {
 	if conf.GandiApiKey == "" {
 		return nil, errors.New("gand api key is empty")
 	}
 	return &Gandi{
+		conf: conf,
 		client: &http.Client{
 			Timeout: conf.Timeout,
 		},

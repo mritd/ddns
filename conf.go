@@ -2,12 +2,7 @@ package main
 
 import (
 	"time"
-
-	"github.com/mritd/zaplogger"
 )
-
-var conf Conf
-var zapConf zaplogger.ZapConfig
 
 type Conf struct {
 	Debug         bool

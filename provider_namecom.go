@@ -13,6 +13,7 @@ import (
 const NameComApi = "https://api.name.com"
 
 type NameCom struct {
+	conf   *Conf
 	client *http.Client
 }
 
@@ -27,12 +28,12 @@ type NameRecord struct {
 }
 
 func (p *NameCom) query() (NameRecord, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, conf.Domain), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, p.conf.Domain), nil)
 	if err != nil {
 		return NameRecord{}, err
 	}
 
-	req.SetBasicAuth(conf.NameComUser, conf.NameComToken)
+	req.SetBasicAuth(p.conf.NameComUser, p.conf.NameComToken)
 
 	resp, err := p.client.Do(req)
 	if err != nil {
@@ -55,11 +56,11 @@ func (p *NameCom) query() (NameRecord, error) {
 	}
 
 	for _, r := range records {
-		if r.Host == conf.Host && r.Type == conf.RecordType {
+		if r.Host == p.conf.Host && r.Type == p.conf.RecordType {
 			return r, nil
 		}
 	}
-	return NameRecord{}, NewRecordNotFoundErr(conf.Host, conf.Domain)
+	return NameRecord{}, NewRecordNotFoundErr(p.conf.Host, p.conf.Domain)
 }
 
 func (p *NameCom) Query() (string, error) {
@@ -78,13 +79,13 @@ func (p *NameCom) Update(ip string) error {
 		return err
 	}
 
-	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, conf.Host, conf.RecordType, ip)
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v4/domains/%s/records/%d", NameComApi, conf.Domain, r.ID), bytes.NewBufferString(payload))
+	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, p.conf.Host, p.conf.RecordType, ip)
+	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v4/domains/%s/records/%d", NameComApi, p.conf.Domain, r.ID), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(conf.NameComUser, conf.NameComToken)
+	req.SetBasicAuth(p.conf.NameComUser, p.conf.NameComToken)
 
 	resp, err := p.client.Do(req)
 	if err != nil {
@@ -101,13 +102,13 @@ func (p *NameCom) Update(ip string) error {
 }
 
 func (p *NameCom) Create(ip string) error {
-	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, conf.Host, conf.RecordType, ip)
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, conf.Domain), bytes.NewBufferString(payload))
+	payload := fmt.Sprintf(`{"host":"%s","type":"%s","answer":"%s","ttl":300}`, p.conf.Host, p.conf.RecordType, ip)
+	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v4/domains/%s/records", NameComApi, p.conf.Domain), bytes.NewBufferString(payload))
 	if err != nil {
 		return err
 	}
 
-	req.SetBasicAuth(conf.NameComUser, conf.NameComToken)
+	req.SetBasicAuth(p.conf.NameComUser, p.conf.NameComToken)
 
 	resp, err := p.client.Do(req)
 	if err != nil {
@@ -123,11 +124,12 @@ func (p *NameCom) Create(ip string) error {
 	return nil
 }
 
-func NewNameCom() (*NameCom, error) {
+func NewNameCom(conf *Conf) (*NameCom, error) {
 	if conf.NameComUser == "" || conf.NameComToken == "" {
 		return nil, errors.New("namecom api user or token is empty")
 	}
 	return &NameCom{
+		conf: conf,
 		client: &http.Client{
 			Timeout: conf.Timeout,
 		},
