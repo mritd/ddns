@@ -85,6 +85,7 @@ func start(conf *Conf) error {
 	c.Start()
 	logger.Info("ddns started.")
 	if conf.Debug {
+		logger.SetDevelopment()
 		confJson, _ := jsoniter.MarshalToString(conf)
 		logger.Debug(confJson)
 	}

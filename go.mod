@@ -7,7 +7,7 @@ require (
 	github.com/json-iterator/go v1.1.10
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1 // indirect
-	github.com/mritd/logger v0.0.2-0.20201205025149-fd4f605cd280
+	github.com/mritd/logger v0.0.3
 	github.com/robfig/cron v1.2.0
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/urfave/cli/v2 v2.3.0
