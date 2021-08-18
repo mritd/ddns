@@ -1,9 +1,9 @@
 package main
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"os/signal"
 	"strings"
 	"syscall"
@@ -90,9 +90,9 @@ func start(conf *Conf) error {
 		logger.Debug(confJson)
 	}
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
+	<-ctx.Done()
 	c.Stop()
 	logger.Info("ddns exit.")
 	return nil

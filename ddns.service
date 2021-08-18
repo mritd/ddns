@@ -1,0 +1,12 @@
+[Unit]
+Description=DDNS Tool
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ddns --provider gandi --gandi-key xxxxxxxxxxxxxxxxxxxxxxx --host rpi --domain example.com --cron "@every 1m"
+ExecStop=/bin/kill -s QUIT $MAINPID
+
+[Install]
+WantedBy=multi-user.target
