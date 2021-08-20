@@ -1,0 +1,7 @@
+version: '3.8'
+services:
+  ddns:
+    image: mritd/ddns
+    container_name: ddns
+    command: ["--provider", "gandi" ,"--gandi-key", "*********************", "--host", "rpi", "--domain", "example.com", "--cron", "@every 1m"]
+    restart: always
