@@ -1,20 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/go-resty/resty/v2"
 )
 
-const GandiApi = "https://api.gandi.net"
+// GandiAPI https://api.gandi.net/docs/livedns/#v5-livedns-domains-fqdn-records-rrset_name-rrset_type
+const GandiAPI = "https://api.gandi.net/v5/livedns/domains/%s/records/%s/%s"
 
 type Gandi struct {
-	conf   *Conf
-	client *http.Client
+	cli *resty.Client
 }
 
 type GandiRecord struct {
@@ -25,112 +22,64 @@ type GandiRecord struct {
 	RRSetValues []string `json:"rrset_values"`
 }
 
-func (p *Gandi) query() (GandiRecord, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, p.conf.Domain, p.conf.Host), nil)
-	if err != nil {
-		return GandiRecord{}, err
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", p.conf.GandiApiKey))
-	req.Header.Add("Content-Type", "application/json;charset=utf-8")
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return GandiRecord{}, err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	bs, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return GandiRecord{}, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return GandiRecord{}, fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
-	}
-
-	var records []GandiRecord
-	err = jsoniter.Unmarshal(bs, &records)
-	if err != nil {
-		return GandiRecord{}, err
-	}
-
-	for _, r := range records {
-		if r.RRSetName == p.conf.Host {
-			if len(r.RRSetValues) == 0 {
-				return GandiRecord{}, NewRecordNotFoundErr(p.conf.Host, p.conf.Domain)
-			}
-			return r, nil
+func (p *Gandi) Query(r *Record) (*Record, error) {
+	var gdr GandiRecord
+	resp, err := p.cli.R().SetResult(&gdr).Get(fmt.Sprintf(GandiAPI, r.Domain, r.Prefix, r.Type))
+	if err != nil || resp.IsError() {
+		if resp.StatusCode() == 404 {
+			return nil, NewRecordNotFoundErr(r)
 		}
+
+		return nil, fmt.Errorf("failed to query record(%d): %w, %v", resp.StatusCode(), err, resp.Error())
 	}
 
-	return GandiRecord{}, NewRecordNotFoundErr(p.conf.Host, p.conf.Domain)
+	return &Record{
+		Type:   r.Type,
+		Domain: r.Domain,
+		Prefix: r.Prefix,
+		Value:  gdr.RRSetValues[0],
+	}, nil
 }
 
-func (p *Gandi) Query() (string, error) {
-	r, err := p.query()
-	if err != nil {
-		return "", err
-	} else {
-		return r.RRSetValues[0], nil
-	}
-}
-
-func (p *Gandi) Update(ip string) error {
-	payload := fmt.Sprintf(`{"items":[{"rrset_type":"%s","rrset_values":["%s"],"rrset_ttl":300}]}`, p.conf.RecordType, ip)
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, p.conf.Domain, p.conf.Host), bytes.NewBufferString(payload))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", p.conf.GandiApiKey))
-	req.Header.Add("Content-Type", "application/json;charset=utf-8")
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		bs, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
+func (p *Gandi) Create(r *Record) error {
+	payload := fmt.Sprintf(`{"rrset_values":["%s"],"rrset_ttl":300}`, r.Value)
+	resp, err := p.cli.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload).
+		Post(fmt.Sprintf(GandiAPI, r.Domain, r.Prefix, r.Type))
+	if err != nil || resp.IsError() {
+		return fmt.Errorf("faile to update record [%s]: %w, %v", r, err, resp.Error())
 	}
 
 	return nil
 }
 
-func (p *Gandi) Create(ip string) error {
-	payload := fmt.Sprintf(`{"rrset_type":"%s","rrset_values":["%s"],"rrset_ttl":300}`, p.conf.RecordType, ip)
-	req, err := http.NewRequest("POST", fmt.Sprintf("%s/v5/livedns/domains/%s/records/%s", GandiApi, p.conf.Domain, p.conf.Host), bytes.NewBufferString(payload))
-	if err != nil {
-		return err
+func (p *Gandi) Update(r *Record) error {
+	payload := fmt.Sprintf(`{"rrset_values":["%s"],"rrset_ttl":300}`, r.Value)
+	resp, err := p.cli.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(payload).
+		Put(fmt.Sprintf(GandiAPI, r.Domain, r.Prefix, r.Type))
+	if err != nil || resp.IsError() {
+		return fmt.Errorf("faile to create record [%s]: %w, %v", r, err, resp.Error())
 	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Apikey %s", p.conf.GandiApiKey))
-	req.Header.Add("Content-Type", "application/json;charset=utf-8")
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
-		bs, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("request failed, status code: %d, message: %s", resp.StatusCode, string(bs))
-	}
-
 	return nil
 }
 
-func NewGandi(conf *Conf) (*Gandi, error) {
-	if conf.GandiApiKey == "" {
+func NewGandi(p *ProviderConf) (*Gandi, error) {
+	if p.GandiApiKey == "" {
 		return nil, errors.New("gand api key is empty")
 	}
+
+	cli := resty.New().
+		SetTimeout(p.Timeout).
+		SetAuthScheme("Apikey").
+		SetAuthToken(p.GandiApiKey)
+
+	if debug {
+		EnableTrace(cli)
+	}
 	return &Gandi{
-		conf: conf,
-		client: &http.Client{
-			Timeout: conf.Timeout,
-		},
+		cli: cli,
 	}, nil
 }

@@ -2,98 +2,82 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
-	"net/http"
 	"os/signal"
-	"strings"
 	"syscall"
 
-	"github.com/mritd/logger"
+	"github.com/go-resty/resty/v2"
 
-	jsoniter "github.com/json-iterator/go"
+	"github.com/sirupsen/logrus"
 
 	"github.com/robfig/cron"
 )
 
 const ApiIpsb = "https://api.ip.sb/ip"
 
-func run(conf *Conf) error {
-	logger.Info("ddns running...")
-	logger.Debugf("dns provider: %s", conf.Provider)
-
-	provider, err := GetProvider(conf)
-	if err != nil {
-		return err
+func run(cli *resty.Client, conf *Conf) {
+	logrus.Debugf("request current ip api: %s", ApiIpsb)
+	resp, err := cli.R().Get(ApiIpsb)
+	if err != nil || resp.IsError() {
+		logrus.Errorf("failed to query current ip: %v, %v", err, resp.Error())
+		return
 	}
 
-	logger.Debugf("request current ip api: %s", ApiIpsb)
-	req, _ := http.NewRequest("GET", ApiIpsb, nil)
-	client := http.Client{Timeout: conf.Timeout}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
+	currentIP := resp.String()
+	logrus.Infof("current ip: %s", currentIP)
 
-	bs, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	currentIP := strings.TrimSpace(string(bs))
-	logger.Infof("current ip: %s", currentIP)
-
-	addr, err := provider.Query()
-	if err != nil {
-		if _, ok := err.(RecordNotFoundErr); ok {
-			logger.Warnf("not found dns record: %s.%s, creating...", conf.Host, conf.Domain)
-			if err := provider.Create(currentIP); err != nil {
-				return err
+	for _, d := range conf.Domains {
+		reqr := &Record{
+			Type:   d.Type,
+			Domain: d.Domain,
+			Prefix: d.Prefix,
+		}
+		logrus.Infof("checking record: %s", reqr)
+		r, err := d.provider.Query(reqr)
+		if err != nil {
+			if _, ok := err.(RecordNotFoundErr); ok {
+				logrus.Warnf("dns record not found: %v, creating...", reqr)
+				reqr.Value = currentIP
+				if err = d.provider.Create(reqr); err != nil {
+					logrus.Error(err)
+				}
+				continue
 			}
-			logger.Infof("create dns record: %s.%s success", conf.Host, conf.Domain)
-			return nil
+		}
+
+		logrus.Infof("record: %s -> %s", reqr, r.Value)
+		if r.Value != currentIP {
+			logrus.Infof("dns record changing: %s -> %s ", reqr, currentIP)
+			reqr.Value = currentIP
+			if err = d.provider.Update(reqr); err != nil {
+				logrus.Error(err)
+				continue
+			}
+			logrus.Infof("dns record changed: %s -> %s", reqr, currentIP)
 		} else {
-			return err
+			logrus.Infof("record skiped: %s...", reqr)
 		}
 	}
 
-	logger.Infof("record ip: %s", addr)
-	if addr != currentIP {
-		logger.Infof("record changing...")
-		if err := provider.Update(currentIP); err != nil {
-			return err
-		}
-		logger.Infof("dns record changed to %s", currentIP)
-	} else {
-		logger.Infof("skip...")
-	}
-
-	return nil
 }
 
 func start(conf *Conf) error {
 	c := cron.New()
-	err := c.AddFunc(conf.Cron, func() {
-		if err := run(conf); err != nil {
-			logger.Error(err)
-		}
-	})
-	if err != nil {
+	cli := resty.New()
+	if debug {
+		EnableTrace(cli)
+	}
+
+	if err := c.AddFunc(conf.Cron, func() { run(cli, conf) }); err != nil {
 		return err
 	}
 
 	c.Start()
-	logger.Info("ddns started.")
-	if conf.Debug {
-		logger.SetDevelopment()
-		confJson, _ := jsoniter.MarshalToString(conf)
-		logger.Debug(confJson)
-	}
+	logrus.Info("ddns started...")
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 	<-ctx.Done()
 	c.Stop()
-	logger.Info("ddns exit.")
+	logrus.Info("ddns exit.")
 	return nil
 }

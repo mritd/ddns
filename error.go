@@ -3,17 +3,15 @@ package main
 import "fmt"
 
 type RecordNotFoundErr struct {
-	Host   string
-	Domain string
+	Record *Record
 }
 
 func (e RecordNotFoundErr) Error() string {
-	return fmt.Sprintf("record [%s.%s] not found", e.Host, e.Domain)
+	return fmt.Sprintf("record %s not found", e.Record)
 }
 
-func NewRecordNotFoundErr(host, domain string) RecordNotFoundErr {
+func NewRecordNotFoundErr(r *Record) RecordNotFoundErr {
 	return RecordNotFoundErr{
-		Host:   host,
-		Domain: domain,
+		Record: r,
 	}
 }
