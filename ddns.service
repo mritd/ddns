@@ -6,7 +6,6 @@ After=network-online.target
 [Service]
 Type=simple
 ExecStart=/usr/local/bin/ddns -k xxxxxxxxxxxxxxxxxxxxxxx -p rpi -d example.com
-ExecStop=/bin/kill -s QUIT $MAINPID
 
 [Install]
 WantedBy=multi-user.target

@@ -32,7 +32,6 @@ func init() {
 	rootCmd.PersistentFlags().StringSliceVarP(&conf.Prefix, "prefix", "p", []string{}, "domain prefix")
 
 	_ = rootCmd.PersistentFlags().MarkHidden("type")
-
 }
 
 func initLog() {
