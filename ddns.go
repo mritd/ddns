@@ -12,11 +12,11 @@ import (
 	"github.com/robfig/cron"
 )
 
-const ApiIpsb = "https://api.ip.sb/ip"
+const IPV4API = "https://api-ipv4.ip.sb/ip "
 
 func run(cli *resty.Client, conf *Conf) {
-	logrus.Debugf("request current ip api: %s", ApiIpsb)
-	resp, err := cli.R().Get(ApiIpsb)
+	logrus.Debugf("request current ip api: %s", IPV4API)
+	resp, err := cli.R().Get(IPV4API)
 	if err != nil || resp.IsError() {
 		logrus.Errorf("failed to query current ip: %v, %v", err, resp.Error())
 		return
@@ -25,19 +25,19 @@ func run(cli *resty.Client, conf *Conf) {
 	currentIP := resp.String()
 	logrus.Infof("current ip: %s", currentIP)
 
-	for _, d := range conf.Domains {
+	for _, p := range conf.Prefix {
 		reqr := &Record{
-			Type:   d.Type,
-			Domain: d.Domain,
-			Prefix: d.Prefix,
+			Type:   conf.Type,
+			Domain: conf.Domain,
+			Prefix: p,
 		}
 		logrus.Infof("checking record: %s", reqr)
-		r, err := d.provider.Query(reqr)
+		r, err := conf.provider.Query(reqr)
 		if err != nil {
 			if _, ok := err.(RecordNotFoundErr); ok {
 				logrus.Warnf("dns record not found: %v, creating...", reqr)
 				reqr.Value = currentIP
-				if err = d.provider.Create(reqr); err != nil {
+				if err = conf.provider.Create(reqr); err != nil {
 					logrus.Error(err)
 				}
 				continue
@@ -48,7 +48,7 @@ func run(cli *resty.Client, conf *Conf) {
 		if r.Value != currentIP {
 			logrus.Infof("dns record changing: %s -> %s ", reqr, currentIP)
 			reqr.Value = currentIP
-			if err = d.provider.Update(reqr); err != nil {
+			if err = conf.provider.Update(reqr); err != nil {
 				logrus.Error(err)
 				continue
 			}

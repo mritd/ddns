@@ -1,0 +1,53 @@
+version: '3'
+
+tasks:
+  clean:
+    cmds:
+      - rm -rf dist
+      - mkdir dist
+  build-tpl:
+    vars:
+      COMMIT_ID:
+        sh: git rev-parse HEAD
+    cmds:
+      - GOOS={{.GOOS}} GOARCH={{.GOARCH}} GOARM={{.GOARM}} GOMIPS={{.GOMIPS}} go build -trimpath -o dist/ddns-{{.TASK}} -ldflags "-w -s -X 'main.commitID={{.COMMIT_ID}}'"
+
+  linux-386:
+    cmds:
+      - task: build-tpl
+        vars: {
+          TASK: "{{.TASK}}",
+          GOOS: linux,
+          GOARCH: 386
+        }
+  linux-amd64:
+    cmds:
+      - task: build-tpl
+        vars: {
+          TASK: "{{.TASK}}",
+          GOOS: linux,
+          GOARCH: amd64
+        }
+  darwin-amd64:
+    cmds:
+      - task: build-tpl
+        vars: {
+          TASK: "{{.TASK}}",
+          GOOS: darwin,
+          GOARCH: amd64
+        }
+  darwin-arm64:
+    cmds:
+      - task: build-tpl
+        vars: {
+          TASK: "{{.TASK}}",
+          GOOS: darwin,
+          GOARCH: arm64
+        }
+  default:
+    cmds:
+      - task: clean
+      - task: linux-386
+      - task: linux-amd64
+      - task: darwin-amd64
+      - task: darwin-arm64

@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/go-resty/resty/v2"
 )
@@ -66,15 +67,15 @@ func (p *Gandi) Update(r *Record) error {
 	return nil
 }
 
-func NewGandi(p *ProviderConf) (*Gandi, error) {
-	if p.GandiApiKey == "" {
+func NewGandi(c *Conf) (*Gandi, error) {
+	if c.ApiKey == "" {
 		return nil, errors.New("gand api key is empty")
 	}
 
 	cli := resty.New().
-		SetTimeout(p.Timeout).
+		SetTimeout(3 * time.Second).
 		SetAuthScheme("Apikey").
-		SetAuthToken(p.GandiApiKey)
+		SetAuthToken(c.ApiKey)
 
 	if debug {
 		EnableTrace(cli)

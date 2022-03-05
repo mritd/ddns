@@ -1,27 +1,18 @@
 package main
 
 import (
-	"fmt"
-
-	"github.com/spf13/viper"
-
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var (
-	version   string
-	buildDate string
-	commitID  string
-)
+var commitID string
 
-var configFile string
 var debug bool
 
 var rootCmd = &cobra.Command{
 	Use:     "ddns",
 	Short:   "Simple DDNS Tool",
-	Version: fmt.Sprintf("%s %s %s", version, commitID, buildDate),
+	Version: commitID,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		conf.initProvider()
 		return start(&conf)
@@ -31,9 +22,17 @@ var rootCmd = &cobra.Command{
 var conf Conf
 
 func init() {
-	cobra.OnInitialize(initLog, initConf)
-	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "ddns.yaml", "ddns config file")
+	cobra.OnInitialize(initLog)
+
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debug mode")
+	rootCmd.PersistentFlags().StringVarP(&conf.Cron, "cron", "c", "@every 30s", "ddns crontab")
+	rootCmd.PersistentFlags().StringVarP(&conf.ApiKey, "key", "k", "", "gandi api key")
+	rootCmd.PersistentFlags().StringVarP(&conf.Type, "type", "t", "A", "record type")
+	rootCmd.PersistentFlags().StringVarP(&conf.Domain, "domain", "d", "", "base domain")
+	rootCmd.PersistentFlags().StringSliceVarP(&conf.Prefix, "prefix", "p", []string{}, "domain prefix")
+
+	_ = rootCmd.PersistentFlags().MarkHidden("type")
+
 }
 
 func initLog() {
@@ -44,21 +43,6 @@ func initLog() {
 		FullTimestamp:   true,
 		TimestampFormat: "2006-01-02 15:04:05",
 	})
-}
-
-func initConf() {
-	viper.SetConfigName("ddns")
-
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("/etc")
-	viper.AddConfigPath("/etc/ddns")
-	_ = viper.ReadInConfig()
-
-	viper.SetEnvPrefix("DDNS")
-	viper.AutomaticEnv()
-	if err := viper.Unmarshal(&conf); err != nil {
-		logrus.Fatal(err)
-	}
 }
 
 func main() {

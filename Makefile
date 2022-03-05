@@ -28,6 +28,3 @@ clean:
 .PHONY: all release clean install docker
 
 .EXPORT_ALL_VARIABLES:
-
-GO111MODULE = on
-GOPROXY = https://goproxy.cn
