@@ -12,7 +12,7 @@ import (
 	"github.com/robfig/cron"
 )
 
-const IPV4API = "https://api-ipv4.ip.sb/ip "
+const IPV4API = "https://api-ipv4.ip.sb/ip"
 
 func run(cli *resty.Client, conf *Conf) {
 	logrus.Debugf("request current ip api: %s", IPV4API)
