@@ -28,6 +28,14 @@ tasks:
           GOOS: linux,
           GOARCH: amd64
         }
+  linux-arm64:
+    cmds:
+      - task: build-tpl
+        vars: {
+          TASK: "{{.TASK}}",
+          GOOS: linux,
+          GOARCH: arm64
+        }
   darwin-amd64:
     cmds:
       - task: build-tpl
@@ -49,5 +57,6 @@ tasks:
       - task: clean
       - task: linux-386
       - task: linux-amd64
+      - task: linux-arm64
       - task: darwin-amd64
       - task: darwin-arm64
